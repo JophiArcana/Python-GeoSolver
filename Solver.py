@@ -609,11 +609,11 @@ class Mul(Expression):
             else:
                 return Mul(const, *other)
         # Remove constant term 1 or 0
-        elif s == 1 and (c := integerize(list(filter(is_constant, args))[0])) in [0, 1]:
-            if c == 0:
+        elif is_constant(args[0]):
+            if args[0] == 0:
                 return 0
             else:
-                return Mul(*filter(lambda arg: not is_constant(arg), args))
+                return Mul(*args[1:])
         # Integerize constant
         elif is_constant(args[0]) and type(args[0]) != type(integerize(args[0])):
             return Mul(integerize(args[0]), *args[1:])

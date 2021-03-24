@@ -178,8 +178,9 @@ def prod(l):
         p *= arg
     return p
 
-def n2_search(l):
-    return any(any(l[i] == l[j] for j in range(i + 1, len(l))) for i in range(len(l) - 1))
+def nlogn_search(l):
+    l2 = sorted(l, key = hash)
+    return any(l2[i] == l2[i + 1] for i in range(len(l2) - 1))
 
 def is_mul_of(expr, t):
     return isinstance(expr, t) or (type(expr) == Mul and len(expr.args) == 2 and is_constant(expr.args[0]) and isinstance(expr.args[1], t))
@@ -529,7 +530,7 @@ class Add(Expression):
                     terms.append(Mul(arg.args[0], x))
             else:
                 terms.append(arg)
-        if n2_search(list(map(remove_constant, terms))):
+        if nlogn_search(list(map(remove_constant, terms))):
             d = dict()
             for term in terms:
                 if type(term) == Mul and is_constant(term.args[0]):
@@ -626,7 +627,7 @@ class Mul(Expression):
                     return arg
             return Mul(*map(f, args))
         # Combine like terms
-        elif n2_search(list(map(remove_exponent, args))):
+        elif nlogn_search(list(map(remove_exponent, args))):
             d = dict()
             for arg in args:
                 if type(arg) == Pow:

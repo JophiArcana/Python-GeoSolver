@@ -1,11 +1,12 @@
 
-import inspect, cmath, sympy, time
+import inspect, cmath, time
+
 from sympy import conjugate as sycon, im as syim, re as syre, symbols
 from sympy import exp as syExp, log as syLog, sqrt as syRt, tan as syTan, cos as syCos, sin as sySin, atan as syAtan, acos as syAcos, asin as syAsin
 from sympy import tanh as syTanh, cosh as syCosh, sinh as sySinh, atanh as syAtanh, acosh as syAcosh, asinh as syAsinh
 from sympy import Symbol as sySymbol, Add as syAdd, Mul as syMul, Pow as syPow, Mod as syMod, Rational as syRational, Integer as syInt, Float as syFloat
 from sympy import solveset, expand, factor, S, Eq
-from cmath import sin, cos, sqrt, pi, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh
+from cmath import e, sin, cos, sqrt, pi, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh
 
 i, jophi = complex('j'), symbols('jophi')
 univ_x, univ_y, univ_z, univ_r, univ_t = symbols('univ_x univ_y univ_z univ_r univ_t')
@@ -1812,3 +1813,152 @@ class Tree:
             else:
                 return any(all(self.branches[l[i]].is_continuation(t.branches[i]) for i in range(k)) for l in permute_list(k))
 
+class MultiSet(set):
+    def __init__(self, *args):
+        assert len(args) <= 1
+        self.cardinal = dict()
+        if len(args) == 1:
+            if type(args[0]) == MultiSet:
+                self.cardinal = dict(args[0].cardinal)
+            elif type(args[0]) == set:
+                for element in list(args[0]):
+                    self.cardinal[element] = 1
+            else:
+                for element in args[0]:
+                    if element not in self.cardinal:
+                        self.cardinal[element] = 1
+                    else:
+                        self.cardinal[element] += 1
+        
+    def __repr__(self):
+        return f'MultiSet({repr(self.cardinal)[1:-1]})'
+
+    def __iter__(self):
+        def f():
+            if self.cardinal != dict():
+                elem = list(self.cardinal.keys())[0]
+                for i in range(list(self.cardinal.values())[0]):
+                    yield elem
+                yield from iter(MultiSet(self).delete(elem))
+        return f()
+
+    def __contains__(self, arg):
+        return arg in self.cardinal
+
+    def __eq__(self, arg):
+        return self.cardinal == arg.cardinal
+
+    def __get__(self, index):
+        return list(self.cardinal.keys())[index]
+
+    def add(self, element, number = 1):
+        assert number > 0
+        if element in self.cardinal:
+            self.cardinal[element] += number
+        else:
+            self.cardinal[element] = number
+        return self
+
+    def remove(self, element, number = 1):
+        assert number > 0
+        if element in self.cardinal:
+            if self.cardinal[element] > number:
+                self.cardinal[element] -= number
+            else:
+                self.cardinal.pop(element)
+        return self
+
+    def delete(self, element):
+        self.cardinal.pop(element)
+        return self
+
+    def count(self, element):
+        if element in self.cardinal:
+            return self.cardinal[element]
+        else:
+            return 0
+
+    def union(self, *args):
+        if len(args) == 0:
+            return self
+        if len(args) == 1:
+            s, arg = MultiSet(self), args[0]
+            if type(arg) == set:
+                for element in list(arg):
+                    if element not in s:
+                        s.add(element)
+            elif type(arg) == MultiSet:
+                for element in arg:
+                    if element not in s:
+                        s.add(element, arg.count(element))
+                    else:
+                        s.cardinal[element] = max(s.count(element), arg.count(element))
+            return s
+        else:
+            return self.union(args[0]).union(*args[1:])
+
+    def intersection(self, *args):
+        if len(args) == 0:
+            return self
+        if len(args) == 1:
+            s, arg = MultiSet(), args[0]
+            if type(arg) == set:
+                for element in list(arg):
+                    if element in self:
+                        s.cardinal[element] = 1
+            elif type(arg) == MultiSet:
+                for element in arg:
+                    if element in self:
+                        s.cardinal[element] = min(self.count(element), arg.count(element))
+            return s
+        else:
+            return self.intersection(args[0]).intersection(*args[1:])
+
+    def exclusion(self, arg):
+        assert type(arg) == MultiSet
+        s = MultiSet(self)
+        for i in range(len(arg.cardinal.keys())):
+            s.remove(list(arg.cardinal.keys())[i], list(arg.cardinal.values())[i])
+        return s
+
+    def size(self):
+        return sum(self.cardinal.values())
+
+    def subset(self, n):
+        assert n >= 0
+        if n == 0:
+            return [MultiSet()]
+        elif self.cardinal == dict():
+            return []
+        else:
+            possible = []
+            for i in range(min(n, list(self.cardinal.values())[0]) + 1):
+                s = MultiSet(self)
+                s.delete(list(self.cardinal.keys())[0])
+                possible += [MultiSet([list(self.cardinal.keys())[0]] * i).union(k) for k in s.subset(n - i)]
+            return possible
+
+    def ordered_subset(self, n):
+        assert n >= 0
+        if n == 0:
+            return [[]]
+        elif self.cardinal == dict():
+            return []
+        else:
+            possible = []
+            for elem in list(self.cardinal.keys()):
+                s = MultiSet(self)
+                s.remove(elem)
+                possible += [[elem] + k for k in s.ordered_subset(n - 1)]
+            return possible
+
+    def permute(self):
+        if self.cardinal == dict():
+            return [[]]
+        else:
+            possible = []
+            for elem in list(self.cardinal.keys()):
+                s = MultiSet(self)
+                s.remove(elem)
+                possible += [[elem] + k for k in s.permute()]
+            return possible
